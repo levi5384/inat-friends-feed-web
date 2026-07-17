@@ -292,49 +292,91 @@ function buildPhotoWrap(obs, size, withAvatar) {
 }
 
 /**
- * Wire pointer-based horizontal swipe onto a container that holds a `.photo-track`.
- * Dragging past a threshold changes page; taps (little movement) fall through to
- * the container's click handler so the fullscreen viewer still opens.
+ * Wire pointer-based horizontal swipe onto a container that holds its own direct
+ * `.photo-track`. Dragging past a threshold changes page; taps (little movement)
+ * fall through to the container's click handler.
+ *
+ * Nested pagers (a photo pager inside the observation-detail pager) must not
+ * fight each other. Two rules keep them separate:
+ *   1. Each handler drives only its *own* track — `:scope > .photo-track` — not
+ *      a descendant pager's track.
+ *   2. Once a gesture is locked as horizontal, the innermost handler that claims
+ *      it calls stopPropagation on the move/up events, so an ancestor handler
+ *      never starts dragging from the same gesture. The photo pager sits inside
+ *      the observation pager, so it wins for swipes that begin on a photo, while
+ *      swipes that begin on the rest of the page reach the observation pager.
  */
 function attachSwipe(container, getIndex, goTo, count) {
-  const track = container.querySelector(".photo-track");
-  let startX = 0, startY = 0, dragging = false, moved = false, width = 1;
+  const track = container.querySelector(":scope > .photo-track");
+  if (!track) return;
+  // dir: null = undecided, "h" = horizontal (ours), "v" = vertical (let scroll)
+  let startX = 0, startY = 0, active = false, dir = null, moved = false, width = 1;
 
   container.addEventListener("pointerdown", (e) => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
-    dragging = true;
+    // A pointerdown bubbles from the innermost element outward. The first
+    // (innermost) pager to see it claims it by tagging the event; ancestor
+    // pagers then ignore this gesture entirely, so a swipe that starts on a
+    // photo never also drives the observation pager, and vice versa.
+    if (e._swipeClaimed) return;
+    e._swipeClaimed = true;
+
+    active = true;
+    dir = null;
     moved = false;
     startX = e.clientX;
     startY = e.clientY;
     width = container.clientWidth || 1;
-    track.style.transition = "none";
   });
 
   container.addEventListener("pointermove", (e) => {
-    if (!dragging) return;
+    if (!active) return;
     const dx = e.clientX - startX;
     const dy = e.clientY - startY;
-    // Ignore mostly-vertical gestures so the page can still scroll.
-    if (!moved && Math.abs(dy) > Math.abs(dx)) { dragging = false; return; }
-    if (Math.abs(dx) > 6) moved = true;
+
+    // Lock the gesture direction once it moves past a small deadzone.
+    if (dir === null) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      dir = Math.abs(dx) >= Math.abs(dy) ? "h" : "v";
+      if (dir === "h") {
+        track.style.transition = "none";
+        // Keep receiving moves even if the finger leaves the element.
+        try { container.setPointerCapture(e.pointerId); } catch (_) {}
+      } else {
+        // Vertical gesture: we don't own it. Release so the page scrolls.
+        active = false;
+        return;
+      }
+    }
+
+    if (dir !== "h") return;
+    if (e.cancelable) e.preventDefault();
+    moved = true;
     const base = -getIndex() * 100;
     track.style.transform = `translateX(calc(${base}% + ${dx}px))`;
   });
 
   function end(e) {
-    if (!dragging) return;
-    dragging = false;
+    if (!active) return;
+    active = false;
+    if (dir !== "h") { dir = null; return; }
     track.style.transition = "";
     const dx = (e.clientX || startX) - startX;
-    if (Math.abs(dx) > width * 0.2) {
+    // Advance on a fast-enough flick or a drag past a threshold. The threshold
+    // is a fraction of width but capped so wide desktop windows don't require
+    // an enormous drag.
+    const threshold = Math.min(width * 0.25, 70);
+    if (Math.abs(dx) > threshold) {
       goTo(getIndex() + (dx < 0 ? 1 : -1));
     } else {
       goTo(getIndex());
     }
+    dir = null;
   }
   container.addEventListener("pointerup", end);
   container.addEventListener("pointercancel", end);
-  // Swallow the click that follows a real drag so it doesn't open the viewer.
+  // Swallow the click that follows a real drag so it doesn't open the viewer
+  // or trigger the card/observation click.
   container.addEventListener("click", (e) => {
     if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; }
   }, true);
