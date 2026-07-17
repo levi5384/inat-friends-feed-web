@@ -261,6 +261,9 @@ html, body {
   justify-content: center;
   padding: 16px;
 }
+/* An explicit display value would otherwise override the `hidden` attribute's
+ * user-agent `display:none`, leaving overlays painted on top of the app. */
+.overlay[hidden] { display: none; }
 .dialog {
   background: var(--surface);
   border-radius: 14px;
