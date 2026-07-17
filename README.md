@@ -7,6 +7,14 @@ from a list of friends. Installable as a Progressive Web App on any phone
 This is a **static site**. All data comes from the public iNaturalist v2 API,
 which sends permissive CORS headers, so there is **no backend** to run or pay for.
 
+**Live:** https://levi5384.github.io/inat-friends-feed-web/
+
+This folder is a standalone git repo, published to GitHub Pages from the
+[`levi5384/inat-friends-feed-web`](https://github.com/levi5384/inat-friends-feed-web)
+repository (`main` branch, root). It sits alongside the Android app under the
+shared `InatFriendsFeed-project/` parent folder, but the two are independent
+repositories.
+
 ## Files
 
 - `index.html` — app shell
@@ -40,25 +48,36 @@ python -m http.server 8731
 Then open http://localhost:8731/ . (A server is needed rather than opening the
 file directly, because service workers require `http`/`https`.)
 
-## Deploy to GitHub Pages
+## Deploy / update
 
-GitHub Pages serves static files for free over HTTPS (which PWAs require). Two
-common setups:
+The site is already published to GitHub Pages (see **Live** above). To ship a
+change:
 
-1. **Project site from a subfolder** — if this folder lives inside a repo whose
-   Pages is enabled, point Pages at the branch and set the folder, or move these
-   files to `/docs` and select "main / docs" in the repo's Pages settings. The
-   app uses relative URLs, so it works from any subpath.
+```
+git add -A
+git commit -m "…"
+git push            # Pages rebuilds automatically in a minute or two
+```
 
-2. **Dedicated repo** — create a repo containing just these files, push, then in
-   the repo's **Settings -> Pages** choose the `main` branch, root folder.
+When you change an app-shell file (`index.html`, `styles.css`, `app.js`), bump
+`CACHE_VERSION` in `sw.js` so the service worker replaces the cached copy for
+returning visitors. Otherwise they may keep seeing the old version until they
+hard-refresh. The app uses relative URLs, so no base-path config is needed for
+the project subpath.
 
-The URL will look like `https://<user>.github.io/<repo>/`. Because the service
-worker's `SHELL` and the manifest use relative paths, no base-path config is
-needed.
+To reproduce the Pages setup from scratch on another repo: enable
+**Settings -> Pages**, source `main` branch / root folder.
+
+## Known limitations
+
+- **DOM volume.** The feed renders every observation in the window at once
+  (~1,900 nodes for ~30 friends over 14 days). Unlike the Android app's lazy
+  grid, there is no windowing/virtualization yet, so very large windows are
+  memory-heavy. A future improvement would cap rendered items with a "load
+  more" control or virtualize the grid.
+- Friends and settings live in `localStorage`, per browser/device (not synced).
 
 ## Notes
 
-- Friends and settings live in `localStorage`, per browser/device (not synced).
 - Editing the default friends list: change `DEFAULT_FRIENDS` in `app.js`.
 - No auth; only public observations are shown, same as the app.
