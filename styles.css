@@ -185,8 +185,18 @@ html, body {
 .card .user-head .login { font-weight: 600; font-size: 15px; }
 .card .user-head .date { font-size: 12px; color: var(--muted); }
 
-.photo-wrap { position: relative; width: 100%; aspect-ratio: 1 / 1; background: var(--surface-variant); }
-.photo-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo-wrap { position: relative; width: 100%; aspect-ratio: 1 / 1; background: var(--surface-variant); overflow: hidden; touch-action: pan-y; }
+
+/* Horizontal swipe track shared by feed cards, the detail pager and the viewer */
+.photo-track {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.25s ease;
+  will-change: transform;
+}
+.photo-slide { flex: 0 0 100%; width: 100%; height: 100%; position: relative; }
+.photo-wrap .photo-slide img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .photo-wrap .avatar-badge {
   position: absolute; top: 4px; left: 4px;
   width: 24px; height: 24px; border-radius: 50%;
@@ -222,6 +232,19 @@ html, body {
   padding: 48px 24px;
   color: var(--muted);
 }
+.centered p { max-width: 340px; margin: 0 auto 12px; line-height: 1.5; }
+.primary-btn {
+  margin-top: 8px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  background: var(--green);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+.primary-btn:hover { background: var(--green-dark); }
 .spinner {
   width: 32px; height: 32px; margin: 40px auto;
   border: 3px solid var(--surface-variant);
@@ -313,17 +336,31 @@ html, body {
 }
 .detail-top .login { font-weight: 600; flex: 1; }
 .detail-top a { color: var(--green); font-size: 13px; text-decoration: none; }
-.detail-body { flex: 1; overflow-y: auto; }
 .detail-nav {
   display: flex; align-items: center; justify-content: space-between;
   padding: 8px 12px; font-size: 13px; color: var(--muted);
+  border-bottom: 1px solid var(--border); background: var(--surface);
 }
 .detail-nav button {
   border: 1px solid var(--border); background: var(--surface); color: var(--on-surface);
   border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 13px;
 }
 .detail-nav button:disabled { opacity: 0.35; cursor: default; }
-.detail-photo img { width: 100%; max-height: 60vh; object-fit: contain; background: #000; display: block; cursor: zoom-in; }
+
+/* Horizontal pager between an observer's observations */
+.detail-stage { flex: 1; overflow: hidden; position: relative; touch-action: pan-y; }
+.detail-stage > .photo-track { align-items: stretch; }
+.detail-page { overflow: hidden; }
+.detail-body { height: 100%; overflow-y: auto; }
+
+/* Swipeable large-photo pager inside a detail page */
+.detail-photo-pager {
+  position: relative; width: 100%; max-height: 60vh; aspect-ratio: 1 / 1;
+  background: #000; overflow: hidden; cursor: zoom-in; touch-action: pan-y;
+}
+.detail-photo-pager .photo-slide img {
+  width: 100%; height: 100%; object-fit: contain; display: block;
+}
 .detail-section { padding: 12px 16px; }
 .detail-section h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin: 0 0 8px; }
 .id-row, .comment-row { display: flex; gap: 8px; padding: 8px 0; border-top: 1px solid var(--border); }
@@ -336,7 +373,16 @@ html, body {
 
 /* Fullscreen photo viewer */
 .viewer-overlay { background: rgba(0,0,0,0.94); flex-direction: column; padding: 0; }
-.viewer-overlay img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.viewer-stage {
+  position: relative; width: 100%; height: 100%; overflow: hidden; touch-action: pan-y;
+}
+.viewer-stage .photo-slide {
+  display: flex; align-items: center; justify-content: center;
+}
+.viewer-stage .photo-slide img {
+  max-width: 100%; max-height: 100%; object-fit: contain; display: block;
+  -webkit-user-drag: none; user-select: none;
+}
 .viewer-close {
   position: absolute; top: max(12px, env(safe-area-inset-top)); right: 12px;
   width: 44px; height: 44px; border-radius: 50%; border: none;
@@ -345,11 +391,66 @@ html, body {
 .viewer-arrow {
   position: absolute; top: 50%; transform: translateY(-50%);
   width: 48px; height: 48px; border-radius: 50%; border: none;
-  background: rgba(255,255,255,0.15); color: #fff; font-size: 26px; cursor: pointer;
+  background: rgba(255,255,255,0.15); color: #fff; font-size: 26px; cursor: pointer; z-index: 2;
 }
 .viewer-arrow.prev { left: 10px; }
 .viewer-arrow.next { right: 10px; }
 .viewer-counter {
   position: absolute; bottom: max(16px, env(safe-area-inset-bottom)); left: 0; right: 0;
-  text-align: center; color: #fff; font-size: 13px;
+  text-align: center; color: #fff; font-size: 13px; z-index: 2; pointer-events: none;
+}
+
+/* Interactive OSM map (detail view) */
+.map-block .map-head {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;
+}
+.map-block .map-head h3 { margin: 0; }
+.map-block .map-head a { color: var(--green); font-size: 12px; font-weight: 500; text-decoration: none; }
+.map {
+  position: relative;
+  width: 100%;
+  height: 240px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: #aad3df;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+}
+.map:active { cursor: grabbing; }
+.map-tiles { position: absolute; inset: 0; }
+.map-tile {
+  position: absolute;
+  width: 256px; height: 256px;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+.map-marker {
+  position: absolute;
+  width: 20px; height: 20px;
+  margin-left: -10px; margin-top: -20px;
+  background: #d32f2f;
+  border: 2px solid #fff;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  pointer-events: none;
+}
+.map-zoom {
+  position: absolute; top: 8px; right: 8px;
+  display: flex; flex-direction: column; gap: 2px; z-index: 2;
+}
+.map-zoom button {
+  width: 30px; height: 30px;
+  border: 1px solid var(--border);
+  background: var(--surface); color: var(--on-surface);
+  font-size: 18px; line-height: 1; cursor: pointer;
+}
+.map-zoom button:first-child { border-radius: 6px 6px 0 0; }
+.map-zoom button:last-child { border-radius: 0 0 6px 6px; }
+.map-attr {
+  position: absolute; bottom: 0; left: 0;
+  background: rgba(255,255,255,0.7); color: #333;
+  font-size: 9px; padding: 1px 4px;
 }

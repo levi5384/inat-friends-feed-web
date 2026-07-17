@@ -3,7 +3,7 @@
  * go through the network and use a runtime cache-first-then-network fallback so
  * a previously loaded feed can still render offline. Bump CACHE_VERSION to ship
  * updated app-shell files. */
-const CACHE_VERSION = "iff-v2";
+const CACHE_VERSION = "iff-v3";
 const SHELL = [
   "./",
   "./index.html",
