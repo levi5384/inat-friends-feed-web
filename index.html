@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#2e7d32" />
+  <title>Friends Feed</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <button id="btn-refresh" class="icon-btn" title="Refresh" aria-label="Refresh">&#x21bb;</button>
+    <h1 class="title">Friends Feed</h1>
+    <div class="actions">
+      <div class="menu-wrap">
+        <button id="btn-window" class="icon-btn" title="Time window" aria-label="Time window">&#x1f552;</button>
+        <div id="menu-window" class="menu" hidden></div>
+      </div>
+      <div class="menu-wrap">
+        <button id="btn-taxon" class="icon-btn" title="Filter by taxon" aria-label="Filter by taxon">
+          &#x25a4;<span id="taxon-badge" class="badge" hidden>0</span>
+        </button>
+        <div id="menu-taxon" class="menu" hidden></div>
+      </div>
+      <button id="btn-friends" class="icon-btn" title="Manage friends" aria-label="Manage friends">&#x1f465;</button>
+      <button id="btn-mode" class="icon-btn" title="Toggle grouping" aria-label="Toggle grouping">&#x1f464;</button>
+      <button id="btn-layout" class="icon-btn" title="Change density" aria-label="Change density">&#x25a6;</button>
+    </div>
+  </header>
+
+  <main id="feed" class="feed" aria-live="polite"></main>
+
+  <button id="back-to-top" class="fab" hidden title="Back to top" aria-label="Back to top">&#x2191;</button>
+
+  <!-- Manage friends dialog -->
+  <div id="friends-dialog" class="overlay" hidden>
+    <div class="dialog">
+      <div class="dialog-head">
+        <h2>Manage friends</h2>
+        <button id="friends-close" class="icon-btn" aria-label="Close">&#x2715;</button>
+      </div>
+      <form id="friends-add-form" class="friends-add">
+        <input id="friends-input" type="text" placeholder="iNaturalist login (e.g. kueda)"
+               autocomplete="off" autocapitalize="none" spellcheck="false" />
+        <button type="submit">Add</button>
+      </form>
+      <ul id="friends-list" class="friends-list"></ul>
+    </div>
+  </div>
+
+  <!-- Detail / photo viewer -->
+  <div id="detail-overlay" class="overlay detail-overlay" hidden></div>
+  <div id="viewer-overlay" class="overlay viewer-overlay" hidden></div>
+
+  <script src="app.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
